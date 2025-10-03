@@ -91,23 +91,23 @@ class Parcela:
         
         if self.__cultivo_actual.lower() == nuevo_cultivo.lower():
             print(f" El cultivo ya es '{nuevo_cultivo}'. No se realizó ningún cambio.")
-            return
+            return #Valido que no sea el mismo cultivo, si es el mismo no hago nada
         
         cultivo_previo = self.__cultivo_actual #Guardo el cultivo previo para el registro del evento
         self.__cultivo_actual = nuevo_cultivo #Actualizo el cultivo
         self.__registrar_evento("Actualización de Cultivo", f"Cultivo cambiado de '{cultivo_previo}' a '{nuevo_cultivo}'.")
         
     def activar(self, motivo: str):
-        if self.__estado == "activo":
-            print("La parcela ya está activa.")
+        if self.__estado == "activo":  #Valido que no esté ya activo
+            print(f"La parcela que ingresaste {self.__id_parcela} ya está activa.")
             return
         
-        self.__estado = "activo"
-        self.__registrar_evento("Activación", motivo)
+        self.__estado = "activo"   #Cambio el estado a activo
+        self.__registrar_evento(f"Parcela {self.__id_parcela} activada", motivo)
     
     def desactivar(self, motivo: str):
         if self.__estado == "inactivo":
-            print("La parcela ya está inactiva.")
+            print(f"La parcela que ingresaste {self.__id_parcela} ya está inactiva.")
             return
         
         self.__estado = "inactivo"
@@ -123,17 +123,17 @@ class Parcela:
         self.__registrar_evento("Rectificación de Superficie", f"Superficie cambiada de {superficie_previa} ha a {nueva_superficie} ha. Motivo: {motivo}.")
     
 # Pruebas
-if __name__ == "__main__":
-    parcela1 = Parcela(1, 10.567, "Trigo")
-    parcela2 = Parcela(2, 5.25, "Maíz")
+# if __name__ == "__main__":
+#     parcela1 = Parcela(1, 10.567, "Trigo")
+#     parcela2 = Parcela(2, 5.25, "Maíz")
     
-    print(f"ID Parcela: {parcela1.idParcela}, Superficie: {parcela1.superficieHa} ha, Cultivo: {parcela1.cultivoActual}, Estado: {parcela1.estado}")
-    print(f"ID Parcela: {parcela2.idParcela}, Superficie: {parcela2.superficieHa} ha, Cultivo: {parcela2.cultivoActual}, Estado: {parcela2.estado}")
+#     print(f"ID Parcela: {parcela1.idParcela}, Superficie: {parcela1.superficieHa} ha, Cultivo: {parcela1.cultivoActual}, Estado: {parcela1.estado}")
+#     print(f"ID Parcela: {parcela2.idParcela}, Superficie: {parcela2.superficieHa} ha, Cultivo: {parcela2.cultivoActual}, Estado: {parcela2.estado}")
     
-    parcela1.actualizar_cultivo("Cebada")
-    parcela1.desactivar("Mantenimiento programado")
-    parcela1.activar("Mantenimiento completado")
-    parcela1.rectificar_superficie(12.34, "Medición precisa")
+#     parcela1.actualizar_cultivo("Cebada")
+#     parcela1.desactivar("Mantenimiento programado")
+#     parcela1.activar("Mantenimiento completado")
+#     parcela1.rectificar_superficie(12.34, "Medición precisa")
     
-    for evento in parcela1.historialEventos:
-        print(evento)
+#     for evento in parcela1.historialEventos:
+#         print(evento)
