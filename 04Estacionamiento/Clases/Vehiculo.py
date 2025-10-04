@@ -1,164 +1,161 @@
-# vehiculo.py
-import uuid
+# Datos mínimos
+    # id_vehiculo (único).
+    # patente (cadena no vacía, formato válido definido por el sistema; p. ej., regex configurable).
+    # peso_kg (número > 0).
+    # estado ∈ {habilitado, inhabilitado} (por defecto habilitado).
+    # historial_eventos (solo lectura: fecha/hora, usuario, tipo_evento, detalle anterior/nuevo).
+# Operaciones
+    # actualizar_peso(nuevo_peso_kg) → valida > 0; registra en historial.
+    # habilitar(motivo) / inhabilitar(motivo) → cambia estado; registra en historial.
+    # consultar_ficha() → devuelve datos actuales y últimas marcas de auditoría.
+# Reglas de negocio
+    # patente no se puede modificar una vez creado el registro.
+    # peso_kg no puede ajustarse por acceso directo; solo por actualizar_peso.
+    # No se permiten operaciones sobre vehículos inhabilitados salvo habilitar.
+    # Todo cambio relevante queda en historial_eventos con timestamp y usuario.
+# Datos derivados/reportables
+    # Fecha de último pesaje/actualización.
+    # Conteo de cambios de estado (habilitado/inhabilitado).
+"""---------------------------------------------------------------------------------------------------------------------------------------------------------------------"""
 from datetime import datetime
-import re
+import uuid
 
-# Constantes para la Auditoría
-USUARIO_SISTEMA = "Sistema-Parqueo"
-ESTADOS_VEHICULO = {"habilitado", "inhabilitado"}
-
-# --- Clases de Apoyo ---
-class EventoHistorico:
-    """Clase para registrar un evento de auditoría en el historial_eventos."""
-    def __init__(self, usuario: str, tipo_evento: str, detalle_anterior: str, detalle_nuevo: str):
-        self.fecha_hora = datetime.now()
-        self.usuario = usuario
-        self.tipo_evento = tipo_evento
-        self.detalle_anterior = detalle_anterior
-        self.detalle_nuevo = detalle_nuevo
-
-    def __str__(self):
-        """Representación legible del evento."""
-        return (f"[{self.fecha_hora.strftime('%Y-%m-%d %H:%M:%S')}] "
-                f"Usuario: {self.usuario} | Evento: {self.tipo_evento}\n"
-                f"  -> Antes: {self.detalle_anterior} | Después: {self.detalle_nuevo}")
-
-# --- Clase Principal: Vehiculo ---
 class Vehiculo:
-    """
-    Representa un vehículo en el parque de estacionamiento.
-    Implementa validaciones de peso y control de estado.
-    """
-    # Regex de ejemplo para patente: 4 letras y 2 números (ej: ABCD12)
-    PATENTE_REGEX = r"^[A-Z]{4}\d{2}$" 
 
-    def __init__(self, patente: str, peso_kg: float, usuario: str = USUARIO_SISTEMA):
-        # Generación de ID único
-        self.__id_vehiculo = str(uuid.uuid4())
-        
-        # Validaciones iniciales
-        if not self._validar_patente(patente):
-            raise ValueError(f"Patente '{patente}' no válida. Formato esperado: LLLLNN (ej: ABCD12).")
+    _ids_existentes = set()
+    
+    def __init__(self, patente: str, peso_kg: float, usuario: str = "Sistema"):
+
+        if not patente or not patente.strip():
+            raise ValueError("La patente no puede estar vacía.")
+        # Validación de unicidad
+        if patente in Vehiculo._ids_existentes:
+            raise ValueError(f"La patente '{patente}' ya está registrada.")
+            
         if peso_kg <= 0:
-            raise ValueError("El peso inicial debe ser mayor a 0 kg.")
-        
-        # Datos mínimos
-        self.__patente = patente # Patente: No se puede modificar (Regla de negocio)
+            raise ValueError("El peso debe ser un número positivo (mayor a 0 kg).")
+
+        self.__id_vehiculo = str(uuid.uuid4())
+        self.__patente = patente.strip().upper()
         self.__peso_kg = peso_kg
         self.__estado = "habilitado"
         self.__historial_eventos = []
-        
-        # Auditoría de creación
-        self._registrar_evento(usuario, "Creación", "N/A", f"Vehículo creado: {patente}, {peso_kg} kg")
+        self.__fecha_ultimo_ajuste = datetime.now()
+        self.__conteo_cambios_estado = 0
 
-    # --- Propiedades (Getters) ---
+        Vehiculo._ids_existentes.add(self.__patente)
+        
+        self.__registrar_evento(usuario, "Creación", None, f"Patente: {self.__patente}, Peso: {self.__peso_kg} kg, Estado: {self.__estado}")
+        print(f"Vehículo con patente '{self.__patente}' creado y habilitado.")
+
+    
+    """ Método para registrar evento----------------------------------------------------------------------------------------------------------------------------------------------------------"""
+
+    def __registrar_evento(self, usuario: str, tipo_evento: str, valor_anterior, valor_nuevo):
+        evento = {
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "usuario": usuario,
+            "tipo_evento": tipo_evento,
+            "anterior": valor_anterior,
+            "nuevo": valor_nuevo
+        }
+        self.__historial_eventos.append(evento)
+
+    
+    """ Getters----------------------------------------------------------------------------------------------------------------------------------------------------------"""
+
     @property
-    def id_vehiculo(self) -> str:
+    def id_vehiculo(self):
         return self.__id_vehiculo
 
     @property
-    def patente(self) -> str:
+    def patente(self):
         return self.__patente
 
     @property
-    def peso_kg(self) -> float:
+    def peso_kg(self):
         return self.__peso_kg
 
     @property
-    def estado(self) -> str:
+    def estado(self):
         return self.__estado
 
     @property
-    def historial_eventos(self) -> list:
-        # Solo lectura: devolvemos una copia superficial para evitar modificación externa
-        return list(self.__historial_eventos) 
+    def historial_eventos(self):
+        return list(self.__historial_eventos)
 
-    # --- Métodos de Validación Interna ---
-    def _validar_patente(self, patente: str) -> bool:
-        """Valida que la patente cumpla con el formato definido."""
-        return bool(re.fullmatch(Vehiculo.PATENTE_REGEX, patente.upper()))
+    @property
+    def fecha_ultimo_ajuste(self):
+        return self.__fecha_ultimo_ajuste
+        
+    @property
+    def conteo_cambios_estado(self):
+        return self.__conteo_cambios_estado
+        
+    
+    """ Setters----------------------------------------------------------------------------------------------------------------------------------------------------------"""
 
-    def _registrar_evento(self, usuario: str, tipo: str, antes: str, despues: str):
-        """Método privado para añadir un evento al historial."""
-        evento = EventoHistorico(usuario, tipo, antes, despues)
-        self.__historial_eventos.append(evento)
+    @peso_kg.setter
+    def peso_kg(self, nuevo_peso):
+        raise AttributeError("El peso no se puede modificar directamente. Use actualizar_peso().")
 
-    # --- Operaciones Públicas ---
+    @patente.setter
+    def patente(self, nueva_patente):
+        raise AttributeError("La patente no se puede modificar una vez creado el registro.")
 
-    def actualizar_peso(self, nuevo_peso_kg: float, usuario: str = USUARIO_SISTEMA) -> bool:
-        """
-        Actualiza el peso del vehículo. Valida si es > 0 y si el vehículo está habilitado.
-        """
-        if self.estado == "inhabilitado":
-            print(f"❌ Error: No se puede actualizar el peso de un vehículo inhabilitado ({self.patente}).")
-            return False
+    
+    """ Métodos del Negocio----------------------------------------------------------------------------------------------------------------------------------------------------------"""
+
+    def actualizar_peso(self, nuevo_peso_kg: float, usuario: str):
+        if self.__estado == "inhabilitado":
+            raise PermissionError(f"Operación rechazada. El vehículo está en estado '{self.__estado}'.")
 
         if nuevo_peso_kg <= 0:
-            print(f"❌ Error: El nuevo peso debe ser mayor a 0 kg. Se recibió {nuevo_peso_kg} kg.")
-            return False
+            raise ValueError("El nuevo peso debe ser un número positivo (mayor a 0 kg).")
 
-        if nuevo_peso_kg != self.__peso_kg:
-            peso_anterior = f"{self.__peso_kg} kg"
-            self.__peso_kg = nuevo_peso_kg
-            self._registrar_evento(usuario, "Actualización Peso", peso_anterior, f"{nuevo_peso_kg} kg")
-            print(f"✅ Éxito: Peso de {self.patente} actualizado a {self.__peso_kg} kg.")
-            return True
-        else:
-            print(f"ℹ️ Aviso: Peso de {self.patente} no cambiado, el valor es el mismo.")
-            return False
+        valor_anterior = self.__peso_kg
+        self.__peso_kg = nuevo_peso_kg
+        self.__fecha_ultimo_ajuste = datetime.now()
+        
+        self.__registrar_evento(usuario, "Actualización Peso", valor_anterior, self.__peso_kg)
+        print(f"Peso del vehículo {self.__patente} actualizado de {valor_anterior} kg a {self.__peso_kg} kg.")
 
-
-    def inhabilitar(self, motivo: str, usuario: str = USUARIO_SISTEMA) -> bool:
-        """Cambia el estado del vehículo a 'inhabilitado'."""
+    def inhabilitar(self, motivo: str, usuario: str):
         if self.__estado == "inhabilitado":
-            print(f"ℹ️ Aviso: {self.patente} ya está inhabilitado.")
-            return False
-        
-        estado_anterior = self.__estado
+            print(f"El vehículo {self.__patente} ya está inhabilitado.")
+            return
+
+        anterior = self.__estado
         self.__estado = "inhabilitado"
-        self._registrar_evento(usuario, "Cambio Estado", 
-                               f"Estado: {estado_anterior} | Motivo Anterior: N/A", 
-                               f"Estado: {self.__estado} | Motivo: {motivo}")
-        print(f"⚠️ Éxito: {self.patente} inhabilitado por '{motivo}'.")
-        return True
-
-    def habilitar(self, motivo: str, usuario: str = USUARIO_SISTEMA) -> bool:
-        """Cambia el estado del vehículo a 'habilitado'. Única operación permitida en estado inhabilitado."""
-        if self.__estado == "habilitado":
-            print(f"ℹ️ Aviso: {self.patente} ya está habilitado.")
-            return False
-            
-        estado_anterior = self.__estado
-        self.__estado = "habilitado"
-        self._registrar_evento(usuario, "Cambio Estado", 
-                               f"Estado: {estado_anterior}", 
-                               f"Estado: {self.__estado} | Motivo: {motivo}")
-        print(f"✅ Éxito: {self.patente} habilitado por '{motivo}'.")
-        return True
-
-    def consultar_ficha(self) -> dict:
-        """Devuelve un resumen de los datos y auditoría."""
-        ultimo_pesaje = "N/A"
-        conteo_cambios = 0
+        self.__conteo_cambios_estado += 1
         
-        # Datos derivados/reportables
-        for evento in reversed(self.__historial_eventos):
-            if evento.tipo_evento == "Actualización Peso":
-                ultimo_pesaje = evento.fecha_hora.strftime('%Y-%m-%d %H:%M:%S')
-            if evento.tipo_evento == "Cambio Estado":
-                conteo_cambios += 1
-                
-        ultima_auditoria = str(self.__historial_eventos[-1]) if self.__historial_eventos else "No hay eventos registrados."
+        self.__registrar_evento(usuario, "Inhabilitación", anterior, self.__estado)
+        print(f"Vehículo {self.__patente} inhabilitado. Motivo: {motivo}.")
 
-        return {
-            "ID": self.id_vehiculo,
-            "Patente": self.patente,
-            "Peso (kg)": self.peso_kg,
-            "Estado": self.estado.upper(),
-            "Último Pesaje": ultimo_pesaje,
-            "Conteo Cambios Estado": conteo_cambios,
-            "Última Marca Auditoría": ultima_auditoria
+    def habilitar(self, motivo: str, usuario: str):
+        if self.__estado == "habilitado":
+            print(f"El vehículo {self.__patente} ya está habilitado.")
+            return
+
+        anterior = self.__estado
+        self.__estado = "habilitado"
+        self.__conteo_cambios_estado += 1
+        
+        self.__registrar_evento(usuario, "Habilitación", anterior, self.__estado)
+        print(f"Vehículo {self.__patente} habilitado. Motivo: {motivo}.")
+
+    def consultar_ficha(self):
+        ficha = {
+            "ID": self.__id_vehiculo,
+            "Patente": self.__patente,
+            "Peso Actual (kg)": self.__peso_kg,
+            "Estado": self.__estado,
+            "Fecha Último Ajuste": self.__fecha_ultimo_ajuste.strftime("%Y-%m-%d %H:%M:%S"),
+            "Conteo Cambios Estado": self.__conteo_cambios_estado,
+            "Último Evento": self.__historial_eventos[-1] if self.__historial_eventos else "N/A"
         }
+        return ficha
 
     def __str__(self):
-        return f"Vehículo ({self.patente}) - Peso: {self.peso_kg} kg, Estado: {self.estado}"
+        return (f"Vehiculo(Patente: {self.__patente}, Peso: {self.__peso_kg} kg, "
+                f"Estado: {self.__estado}, Último Ajuste: {self.fecha_ultimo_ajuste.strftime('%Y-%m-%d %H:%M')})")
