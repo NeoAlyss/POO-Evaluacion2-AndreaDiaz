@@ -96,4 +96,13 @@ class Publicacion:
         self.__anio = nuevo_anio
         self.__registrar_evento("anio", anio_anterior, nuevo_anio)
         print(f"Año actualizado de {anio_anterior} a {nuevo_anio}.")
+
+    def historial(self):
+        print("Historial de eventos:")
+        if not self.__historial_eventos:
+            print("No hay eventos registrados.")
+            return
+            
+        for evento in self.__historial_eventos:
+            print(f"[{evento['fecha']}] CAMPO: {evento['campo']} - ANTERIOR: {evento['anterior']} - NUEVO: {evento['nuevo']}")
     
