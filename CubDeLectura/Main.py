@@ -1,4 +1,4 @@
-from Clases.Publicacion import Publicacion, PublicacionException
+from Clases.Publicacion import Publicacion
 from Clases.Libro import Libro
 import sys
 
