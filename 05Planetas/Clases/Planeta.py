@@ -1,128 +1,105 @@
-# planeta.py
-
+# Modelo 2 — Planeta
+# Extiende el modelo de Cuerpo Celeste agregando radio y distancia al sol..
+# Datos adicionales
+    # radio_km (número > 0).
+    # distancia_sol_km (número > 0).
+# Operaciones.
+    # actualizar_radio(nuevo_radio) → valida > 0.
+    # actualizar_distancia_sol(nueva_distancia) → valida > 0.
+    # calcular_densidad() → densidad = masa / volumen (volumen ≈ 4/3 × π × radio³).
+    # comparar_distancia(otro_planeta) → indica cuál está más cerca del sol.
+# Reglas de negocio.
+    # El radio y la distancia al sol deben ser mayores que cero.
+    # Ningún campo puede alterarse directamente; solo mediante operaciones.
+    # Comparaciones solo son válidas entre objetos del tipo Planeta.
+# Datos derivados/reportables
+    # Densidad (kg/km³).
+    # Demanda de energía teórica: podría calcularse más adelante a partir de la masa y la distancia (opcional como extensión).
+"""---------------------------------------------------------------------------------------------------------------------------------------------------------------------"""
 import math
-from Clases.CuerposCelestes import CuerpoCeleste, ValidacionError
+from Clases.CuerposCelestes import ObjetoCeleste 
+from datetime import datetime
 
-class Planeta(CuerpoCeleste):
-    """
-    Extiende CuerpoCeleste para incluir propiedades específicas de un planeta.
-    """
-    
+class Planeta(ObjetoCeleste):
+
     def __init__(self, nombre: str, masa_kg: float, radio_km: float, distancia_sol_km: float):
-        """
-        Inicializa un Planeta, llamando al constructor de la clase base.
-        """
-        # Inicializa CuerpoCeleste: id, nombre, masa e historial
+        
+        # 1. Validación de atributos específicos
+        if radio_km <= 0:
+            raise ValueError("El radio debe ser un número positivo (mayor a 0 km).")
+        
+        if distancia_sol_km <= 0:
+            raise ValueError("La distancia al sol debe ser un número positivo (mayor a 0 km).")
+
+        # 2. Inicialización de la clase base (ObjetoCeleste)
         super().__init__(nombre, masa_kg)
         
-        # Atributos adicionales
-        self._radio_km = None
-        self._distancia_sol_km = None
+        # 3. Inicialización de atributos de Planeta (Encapsulados)
+        self.__radio_km = radio_km
+        self.__distancia_sol_km = distancia_sol_km
         
-        # Inicialización con las operaciones para asegurar validación
-        self.actualizar_radio(radio_km)
-        self.actualizar_distancia_sol(distancia_sol_km)
-    
-    # --- Propiedades de Solo Lectura (Getters) ---
+        # Registro inicial en el historial general (del padre)
+        self._ObjetoCeleste__registrar_evento("radio_km", None, radio_km)
+        self._ObjetoCeleste__registrar_evento("distancia_sol_km", None, distancia_sol_km)
+        print(f"Planeta '{self.nombre}' inicializado con radio {radio_km} km y a {distancia_sol_km} km del sol.")
 
+    
+    """ Getters-----------------------------------------------------------------------------------------------------------------------------------------------------------"""
     @property
     def radio_km(self) -> float:
-        """Devuelve el radio actual en km."""
-        return self._radio_km
+        return self.__radio_km
 
     @property
     def distancia_sol_km(self) -> float:
-        """Devuelve la distancia actual al Sol en km."""
-        return self._distancia_sol_km
-    
-    # --- Operaciones de Modificación con Validación y Registro ---
-    
-    def actualizar_radio(self, nuevo_radio: float):
-        """
-        Actualiza el radio, validando que sea mayor que cero.
-        """
-        if nuevo_radio <= 0:
-            raise ValidacionError("El radio debe ser un número positivo (mayor que 0) en km.")
+        return self.__distancia_sol_km
         
-        valor_anterior = self._radio_km
-        if valor_anterior is not None and valor_anterior != nuevo_radio:
-            self._registrar_evento("radio_km", valor_anterior, nuevo_radio)
+    @property
+    def volumen_km3(self) -> float:
+        # Volumen (4/3 * pi * r^3)
+        return (4/3) * math.pi * (self.__radio_km ** 3)
+        
+    @property
+    def densidad_kg_km3(self) -> float:
+        # Dato Derivado: Densidad (masa / volumen)
+        volumen = self.volumen_km3
+        if volumen == 0:
+            return 0.0
+        return self.masa_kg / volumen
+
+    """ Métodos-----------------------------------------------------------------------------------------------------------------------------------------------------------"""
+
+    def actualizar_radio(self, nuevo_radio: float):
+        if nuevo_radio <= 0:
+            raise ValueError("El nuevo radio debe ser un número positivo (mayor a 0 km).")
             
-        self._radio_km = nuevo_radio
+        valor_anterior = self.__radio_km
+        self.__radio_km = nuevo_radio
+        
+        # Uso del name mangling del padre para registrar el evento
+        self._ObjetoCeleste__registrar_evento("radio_km", valor_anterior, self.__radio_km)
+        print(f"Radio de {self.nombre} actualizado de {valor_anterior} km a {self.__radio_km} km.")
 
     def actualizar_distancia_sol(self, nueva_distancia: float):
-        """
-        Actualiza la distancia al Sol, validando que sea mayor que cero.
-        """
         if nueva_distancia <= 0:
-            raise ValidacionError("La distancia al Sol debe ser un número positivo (mayor que 0) en km.")
-        
-        valor_anterior = self._distancia_sol_km
-        if valor_anterior is not None and valor_anterior != nueva_distancia:
-            self._registrar_evento("distancia_sol_km", valor_anterior, nueva_distancia)
+            raise ValueError("La nueva distancia al sol debe ser un número positivo (mayor a 0 km).")
             
-        self._distancia_sol_km = nueva_distancia
+        valor_anterior = self.__distancia_sol_km
+        self.__distancia_sol_km = nueva_distancia
         
-    # --- Operaciones Específicas de Planeta ---
+        # Uso del name mangling del padre para registrar el evento
+        self._ObjetoCeleste__registrar_evento("distancia_sol_km", valor_anterior, self.__distancia_sol_km)
+        print(f"Distancia al sol de {self.nombre} actualizada de {valor_anterior} km a {self.__distancia_sol_km} km.")
 
     def calcular_densidad(self) -> float:
-        """
-        Calcula la densidad aproximada (masa / volumen).
-        Volumen = 4/3 * pi * radio^3.
-        Resultado en kg/km³.
-        """
-        # Convertimos el radio a metros para un cálculo más estándar, 
-        # pero la consigna pide kg/km³, así que usamos el radio en km
-        radio_cubico = self._radio_km ** 3
-        # Volumen de una esfera (aproximación)
-        volumen_km3 = (4/3) * math.pi * radio_cubico
+        """Calcula y devuelve la densidad (masa / volumen)."""
+        return self.densidad_kg_km3
         
-        if volumen_km3 == 0:
-            # Esto no debería pasar si la validación de radio es correcta
-            return 0.0
-            
-        densidad_kg_por_km3 = self.masa_kg / volumen_km3
-        return densidad_kg_por_km3
-
-    def comparar_distancia(self, otro_planeta: 'Planeta') -> str:
-        """
-        Compara la distancia al Sol con la de otro Planeta.
-        Valida que el otro objeto sea de tipo Planeta.
-        """
+    def comparar_distancia(self, otro_planeta):
+        """Indica cuál de los dos planetas está más cerca del sol."""
+        
+        # Regla de Negocio: Comparaciones solo son válidas entre objetos del tipo Planeta
         if not isinstance(otro_planeta, Planeta):
             raise TypeError("La comparación de distancia solo es válida entre objetos de tipo Planeta.")
             
-        dist_self = self.distancia_sol_km
-        dist_otro = otro_planeta.distancia_sol_km
-        
-        if dist_self < dist_otro:
-            return f"{self.nombre} está más cerca del Sol que {otro_planeta.nombre} ({dist_self:_.0f} km vs {dist_otro:_.0f} km)."
-        elif dist_self > dist_otro:
-            return f"{otro_planeta.nombre} está más cerca del Sol que {self.nombre} ({dist_otro:_.0f} km vs {dist_self:_.0f} km)."
-        else:
-            return f"{self.nombre} y {otro_planeta.nombre} están a la misma distancia del Sol ({dist_self:_.0f} km)."
-
-    # --- Sobreescritura de Método de la Clase Base ---
-
-    def consultar_ficha(self) -> str:
-        """
-        Sobreescribe la ficha base añadiendo los datos de Planeta.
-        """
-        ficha_base = super().consultar_ficha()
-        
-        # Añadir datos específicos de Planeta
-        ficha_planeta = "\n  --- Datos de Planeta ---\n"
-        ficha_planeta += f"  Radio (km): {self._radio_km:_.0f}\n"
-        ficha_planeta += f"  Distancia al Sol (km): {self._distancia_sol_km:_.0f}\n"
-        
-        try:
-            densidad = self.calcular_densidad()
-            ficha_planeta += f"  Densidad Aprox (kg/km³): {densidad:_.2e}\n"
-        except ValidacionError:
-            ficha_planeta += "  Densidad Aprox (kg/km³): N/A (Datos incompletos/inválidos)\n"
-            
-        return ficha_base + ficha_planeta
-
-    def __str__(self):
-        """Representación legible del objeto."""
-        return f"Planeta(ID={self.id_celeste}, Nombre='{self.nombre}', Masa={self.masa_kg:_.2e} kg, Radio={self.radio_km:_.0f} km)"
+        mi_distancia = self.distancia_sol_km
+        otra_distancia = otro_planeta.distancia_

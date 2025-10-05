@@ -1,144 +1,122 @@
-# cuerpo_celeste.py
-
+# Datos mínimos.
+    # id_celeste (único).
+    # nombre (cadena no vacía).
+    # masa_kg (número > 0).
+    # historial_eventos (solo lectura: fecha/hora, campo modificado, valor anterior/nuevo).
+# Operaciones.
+    # actualizar_nombre(nuevo_nombre) → valida no vacío.
+    # actualizar_masa(nueva_masa) → valida > 0; registra en historial.
+    # consultar_ficha() → devuelve datos actuales más últimos eventos.
+    # Reglas de negocio.
+    # La masa nunca puede ser ≤ 0.
+    # El nombre no puede quedar vacío.
+    # No se permiten cambios directos; todo ajuste debe pasar por operaciones con validación.
+    # Cada actualización queda registrada en el historial.
+# Datos derivados/reportable
+    # Fecha de última actualización de masa.
+    # Número de modificaciones realizadas.
+"""---------------------------------------------------------------------------------------------------------------------------------------------------------------------"""
 from datetime import datetime
+import uuid
 
-# --- Clase de Excepción Personalizada ---
-class ValidacionError(Exception):
-    """Excepción personalizada para errores de validación en los datos."""
-    pass
-
-# --- Clase Base CuerpoCeleste ---
-class CuerpoCeleste:
-    """
-    Modelo base para cualquier cuerpo celeste.
-    Implementa encapsulamiento, validación y registro de historial.
-    """
-    
-    # Contador para generar IDs únicos de forma sencilla
-    _next_id = 1
+class ObjetoCeleste:
 
     def __init__(self, nombre: str, masa_kg: float):
-        """
-        Inicializa un nuevo CuerpoCeleste.
-        Valida que nombre no sea vacío y masa sea positiva.
-        """
-        self._id_celeste = CuerpoCeleste._next_id
-        CuerpoCeleste._next_id += 1
         
-        # Atributos internos (privados)
-        self._nombre = None
-        self._masa_kg = None
-        self._historial_eventos = []
-        self._fecha_ultima_masa = None
-        self._num_modificaciones = 0
+        #Validaciones
+        if not nombre or not nombre.strip():
+            raise ValueError("El nombre no puede estar vacío.")
+        
+        if masa_kg <= 0:
+            raise ValueError("La masa debe ser un número positivo (mayor a 0 kg).")
 
-        # Inicialización a través de las operaciones para asegurar validación
-        self.actualizar_nombre(nombre)
-        self.actualizar_masa(masa_kg)
+        #atributos
+        self.__id_celeste = str(uuid.uuid4())
+        self.__nombre = nombre.strip()
+        self.__masa_kg = masa_kg
+        self.__historial_eventos = []
+        self.__fecha_ultima_actualizacion = datetime.now()
+        self.__numero_modificaciones = 0
 
-    # --- Propiedades de Solo Lectura (Getters) ---
+        #registro de evento de creación
+        self.__registrar_evento("creacion", None, self.__masa_kg)
+        print(f"Objeto Celeste '{self.__nombre}' (ID: {self.__id_celeste[:4]}...) creado con masa de {self.__masa_kg} kg.")
+
     
-    @property
-    def id_celeste(self) -> int:
-        """Devuelve el ID único del cuerpo celeste."""
-        return self._id_celeste
+    """ Registro de vento--------------------------------------------------------------------------------------------------------------------------------------------------"""
 
-    @property
-    def nombre(self) -> str:
-        """Devuelve el nombre actual."""
-        return self._nombre
-
-    @property
-    def masa_kg(self) -> float:
-        """Devuelve la masa actual en kg."""
-        return self._masa_kg
-
-    @property
-    def historial_eventos(self) -> list:
-        """Devuelve el historial de eventos (solo lectura)."""
-        # Devolvemos una copia para proteger la lista original
-        return list(self._historial_eventos)
-
-    @property
-    def fecha_ultima_actualizacion_masa(self) -> str:
-        """Devuelve la fecha de la última actualización de masa."""
-        return self._fecha_ultima_masa
-
-    @property
-    def numero_modificaciones(self) -> int:
-        """Devuelve el número total de modificaciones realizadas."""
-        return self._num_modificaciones
-    
-    # --- Métodos de Ayuda Interna ---
-    
-    def _registrar_evento(self, campo: str, valor_anterior, valor_nuevo):
-        """
-        Registra un evento de modificación en el historial.
-        """
-        ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def __registrar_evento(self, campo: str, valor_anterior, valor_nuevo):
         evento = {
-            "fecha_hora": ahora,
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "campo_modificado": campo,
             "valor_anterior": valor_anterior,
             "valor_nuevo": valor_nuevo
         }
-        self._historial_eventos.append(evento)
-        self._num_modificaciones += 1
+        self.__historial_eventos.append(evento)
+        self.__numero_modificaciones += 1
+    
+    
+    """ Getters--------------------------------------------------------------------------------------------------------------------------------------------------"""
 
-    # --- Operaciones de Modificación con Validación y Registro ---
+    @property
+    def id_celeste(self) -> str:
+        return self.__id_celeste
+
+    @property
+    def nombre(self) -> str:
+        return self.__nombre
+
+    @property
+    def masa_kg(self) -> float:
+        return self.__masa_kg
+
+    @property
+    def historial_eventos(self) -> list:
+        # Devuelve una copia para mantener el encapsulamiento
+        return list(self.__historial_eventos)
+
+    @property
+    def fecha_ultima_actualizacion(self) -> datetime:
+        return self.__fecha_ultima_actualizacion
+        
+    @property
+    def numero_modificaciones(self) -> int:
+        return self.__numero_modificaciones
+
+    """ Métodos--------------------------------------------------------------------------------------------------------------------------------------------------"""
 
     def actualizar_nombre(self, nuevo_nombre: str):
-        """
-        Actualiza el nombre, validando que no esté vacío.
-        """
         if not nuevo_nombre or not nuevo_nombre.strip():
-            raise ValidacionError("El nombre no puede ser una cadena vacía.")
+            raise ValueError("El nuevo nombre no puede estar vacío.")
         
-        valor_anterior = self._nombre
-        if valor_anterior is not None and valor_anterior != nuevo_nombre:
-            self._registrar_evento("nombre", valor_anterior, nuevo_nombre)
-            
-        self._nombre = nuevo_nombre.strip()
+        valor_anterior = self.__nombre
+        self.__nombre = nuevo_nombre.strip()
+        
+        self.__registrar_evento("nombre", valor_anterior, self.__nombre)
+        print(f"Nombre actualizado de '{valor_anterior}' a '{self.__nombre}'.")
 
     def actualizar_masa(self, nueva_masa: float):
-        """
-        Actualiza la masa, validando que sea mayor que cero.
-        Registra el cambio en el historial.
-        """
         if nueva_masa <= 0:
-            raise ValidacionError("La masa debe ser un número positivo (mayor que 0).")
-        
-        valor_anterior = self._masa_kg
-        if valor_anterior is not None and valor_anterior != nueva_masa:
-            self._registrar_evento("masa_kg", valor_anterior, nueva_masa)
-            self._fecha_ultima_masa = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        self._masa_kg = nueva_masa
-
-    # --- Operaciones de Reporte ---
-    
-    def consultar_ficha(self) -> str:
-        """
-        Devuelve una ficha de datos actuales más los últimos 3 eventos.
-        """
-        ficha = f"\n--- Ficha de {self.nombre} (ID: {self.id_celeste}) ---\n"
-        ficha += f"  Masa (kg): {self.masa_kg:_.2e}\n"
-        ficha += f"  Última Modificación Masa: {self.fecha_ultima_actualizacion_masa or 'N/A'}\n"
-        ficha += f"  Total de Modificaciones: {self.numero_modificaciones}\n"
-        
-        eventos = self.historial_eventos
-        if eventos:
-            ficha += "\n  --- Últimos Eventos ---\n"
-            # Mostrar los últimos 3 eventos
-            for i, evento in enumerate(eventos[-3:], start=1):
-                ficha += f"  {i}. {evento['fecha_hora']} - Campo: {evento['campo_modificado']} | Antes: {evento['valor_anterior']} | Ahora: {evento['valor_nuevo']}\n"
-        else:
-            ficha += "\n  --- No hay eventos de modificación registrados ---\n"
+            raise ValueError("La nueva masa debe ser un número positivo (mayor a 0 kg).")
             
-        return ficha
+        valor_anterior = self.__masa_kg
+        self.__masa_kg = nueva_masa
+        self.__fecha_ultima_actualizacion = datetime.now()
+        
+        self.__registrar_evento("masa_kg", valor_anterior, self.__masa_kg)
+        print(f"Masa actualizada de {valor_anterior} kg a {self.__masa_kg} kg.")
 
-    # --- Representación de Objeto ---
-    
+    def consultar_ficha(self):
+        """Devuelve los datos actuales del objeto y el resumen de auditoría."""
+        return {
+            "ID Celeste": self.__id_celeste,
+            "Nombre": self.__nombre,
+            "Masa Actual (kg)": self.__masa_kg,
+            "Última Modificación": self.fecha_ultima_actualizacion.strftime("%Y-%m-%d %H:%M:%S"),
+            "Total Modificaciones": self.numero_modificaciones,
+            "Último Evento": self.__historial_eventos[-1] if self.__historial_eventos else "N/A"
+        }
+
     def __str__(self):
-        """Representación legible del objeto."""
-        return f"CuerpoCeleste(ID={self.id_celeste}, Nombre='{self.nombre}', Masa={self.masa_kg:_.2e} kg)"
+        return (f"ObjetoCeleste(Nombre: {self.__nombre}, Masa: {self.__masa_kg} kg, "
+                f"Modificaciones: {self.numero_modificaciones}, Última Act.: {self.fecha_ultima_actualizacion.strftime('%Y-%m-%d')})")
